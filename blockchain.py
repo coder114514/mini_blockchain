@@ -52,12 +52,12 @@ class BlockChain:
 
     def POW(self, block):
         block['proof'] = 0
-        while not self.valid_proof(block):
+        while not self.valid(block):
             block['proof'] += 1
         return block
 
     @staticmethod
-    def valid_proof(block):
+    def valid(block):
         guess_hash = BlockChain.hash(block)
         return guess_hash[:4] == "0000"
 
