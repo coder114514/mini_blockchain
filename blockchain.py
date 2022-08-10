@@ -1,9 +1,11 @@
+from urllib.parse import urlparse
 from flask import Flask, jsonify, request
 import sys
 from uuid import uuid4
 from time import time
 import json
 import hashlib
+import requests
 
 
 # example_block = {
@@ -25,6 +27,7 @@ class BlockChain:
         self.chain = []
         self.votes = []
         self.new_block(0)
+        self.nodes = set()
 
     def new_vote(self, f, t):
         self.votes.append({'from': f, 'to': t})
@@ -61,6 +64,37 @@ class BlockChain:
         guess_hash = BlockChain.hash(block)
         return guess_hash[:4] == "0000"
 
+    def register(self, address):
+        url = urlparse(address)
+        self.nodes.add(url.netloc)
+
+    @staticmethod
+    def valid_chain(chain):
+        for i in range(1, len(chain)):
+            block = chain[i]
+            last = chain[i-1]
+            if block['previous_hash'] != BlockChain.hash(last):
+                return False
+            if not BlockChain.valid(block):
+                return False
+        return True
+
+    def resolve_conflicts(self):
+        new_chain = None
+        max_len = len(self.chain)
+        for node in self.nodes:
+            response = requests.get(f'http://{node}/chain')
+            if response.status_code == 200:
+                length = response.json()['length']
+                chain = response.json()['chain']
+                if length > max_len and self.valid_chain(chain):
+                    max_len = length
+                    new_chain = chain
+        if new_chain:
+            self.chain = new_chain
+            return True
+        return False
+
 
 app = Flask(__name__)
 node_identifier = str(uuid4()).replace('-', '')
@@ -96,6 +130,34 @@ def full_chain():
         'chain': chain.chain,
         'length': len(chain.chain),
     }
+    return jsonify(response), 200
+
+
+@app.route('/nodes/register', methods=['GET'])
+def register_nodes():
+    values = request.args
+    for node in values['nodes'].split(','):
+        chain.register(node)
+    response = {
+        'message': 'New nodes have been added',
+        'total_nodes': list(chain.nodes),
+    }
+    return jsonify(response), 201
+
+
+@app.route('/nodes/resolve', methods=['GET'])
+def consensus():
+    replaced = chain.resolve_conflicts()
+    if replaced:
+        response = {
+            'message': 'Our chain was replaced',
+            'new_chain': chain.chain
+        }
+    else:
+        response = {
+            'message': 'Our chain was not replaced',
+            'chain': chain.chain
+        }
     return jsonify(response), 200
 
 
