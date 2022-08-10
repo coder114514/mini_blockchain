@@ -6,18 +6,18 @@ import json
 import hashlib
 
 
-example_block = {
-    'index': 1,
-    'timestamp': 0,
-    'votes': [
-        {
-            'from': 'a',
-            'to': 'b'
-        }
-    ],
-    'proof': 0,
-    'previous_hash': 'asdfasdfasdfasdf'
-}
+# example_block = {
+#     'index': 1,
+#     'timestamp': 0,
+#     'votes': [
+#         {
+#             'from': 'a',
+#             'to': 'b'
+#         }
+#     ],
+#     'proof': 0,
+#     'previous_hash': 'asdfasdfasdfasdf'
+# }
 
 
 class BlockChain:
